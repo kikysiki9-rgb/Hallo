@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Список дел</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 2rem 1rem; font: 1rem/1.5 system-ui, sans-serif; background: #eef2ff; color: #172554; }
+    main { max-width: 36rem; margin: auto; background: white; padding: 1.5rem; border-radius: 1rem; }
+    h1 { margin-top: 0; }
+    form div { display: flex; gap: .5rem; }
+    input, button { font: inherit; }
+    #task { flex: 1; min-width: 0; padding: .5rem; }
+    button { padding: .4rem .65rem; cursor: pointer; }
+    ul { padding: 0; list-style: none; }
+    li { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: .5rem 0; border-bottom: 1px solid #e0e7ff; }
+    li label { display: flex; align-items: center; gap: .5rem; overflow-wrap: anywhere; }
+    input:checked + span { text-decoration: line-through; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Список дел</h1>
+    <form id="task-form">
+      <label for="task">Новая задача</label>
+      <div><input id="task" required maxlength="120" autocomplete="off"><button>Добавить</button></div>
+    </form>
+    <p id="status" role="status"></p>
+    <ul id="tasks"></ul>
+  </main>
+  <script>
+    const key = 'hallo-tasks';
+    const form = document.querySelector('#task-form');
+    const input = document.querySelector('#task');
+    const list = document.querySelector('#tasks');
+    const status = document.querySelector('#status');
+    let tasks = [];
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || '[]');
+      if (Array.isArray(saved)) tasks = saved.filter(task => task && typeof task.text === 'string' && typeof task.done === 'boolean');
+    } catch { /* Start with an empty list if storage is unavailable. */ }
+
+    function updateStatus() {
+      status.textContent = tasks.length ? `Выполнено: ${tasks.filter(task => task.done).length} из ${tasks.length}` : 'Пока нет задач.';
+    }
+
+    function save() {
+      updateStatus();
+      try {
+        localStorage.setItem(key, JSON.stringify(tasks));
+      } catch {
+        status.textContent += ' Не удалось сохранить список в браузере.';
+      }
+    }
+
+    function addRow(task) {
+      const row = document.createElement('li');
+      const label = document.createElement('label');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = task.done;
+      checkbox.addEventListener('change', () => { task.done = checkbox.checked; save(); });
+      const text = document.createElement('span');
+      text.textContent = task.text;
+      label.append(checkbox, text);
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.textContent = 'Удалить';
+      remove.setAttribute('aria-label', `Удалить задачу: ${task.text}`);
+      remove.addEventListener('click', () => {
+        tasks = tasks.filter(item => item !== task);
+        row.remove();
+        save();
+        input.focus();
+      });
+      row.append(label, remove);
+      list.append(row);
+    }
+
+    tasks.forEach(addRow);
+    updateStatus();
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text) { input.focus(); return; }
+      const task = { text, done: false };
+      tasks.push(task);
+      addRow(task);
+      save();
+      form.reset();
+      input.focus();
+    });
+  </script>
+</body>
+</html>
